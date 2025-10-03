@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>99 Nights - Mystery Box</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Creepster&family=Luckiest+Guy&display=swap" rel="stylesheet">
+    <style>
+        /* Use a custom font that fits the cartoonish, spooky theme */
+        body {
+            font-family: 'Luckiest Guy', cursive;
+            background-color: #100f1c;
+            background-image:
+                radial-gradient(circle at 25% 25%, rgba(108, 99, 255, 0.1) 0%, transparent 40%),
+                radial-gradient(circle at 75% 75%, rgba(34, 197, 94, 0.1) 0%, transparent 40%);
+        }
+
+        main {
+            transition: opacity 0.6s ease-in-out;
+        }
+
+        /* --- Particle Background --- */
+        .particle {
+            position: absolute;
+            background: #fff;
+            border-radius: 50%;
+            opacity: 0;
+            animation: rise 5s infinite;
+        }
+
+        @keyframes rise {
+            0% {
+                transform: translateY(0) scale(1);
+                opacity: 0.3;
+            }
+            50% {
+                opacity: 0.8;
+            }
+            100% {
+                transform: translateY(-100vh) scale(0.5);
+                opacity: 0;
+            }
+        }
+
+        /* --- Box Container --- */
+        #box-container {
+            perspective: 1000px;
+        }
+
+        /* --- Clickable Box Styling --- */
+        #box {
+            cursor: pointer;
+            transition: transform 0.2s ease-out;
+        }
+        #box:hover {
+            transform: scale(1.05);
+        }
+
+        /* --- Box Animations --- */
+        .shake-stretch {
+            animation: shake-stretch 0.8s cubic-bezier(.36,.07,.19,.97) both;
+        }
+
+        @keyframes shake-stretch {
+            10%, 90% { transform: translate3d(-1px, 0, 0) scale(1.02, 0.98); }
+            20%, 80% { transform: translate3d(2px, 0, 0) scale(0.98, 1.02); }
+            30%, 50%, 70% { transform: translate3d(-4px, 0, 0) scale(1.05, 0.95); }
+            40%, 60% { transform: translate3d(4px, 0, 0) scale(0.95, 1.05); }
+            100% { transform: scale(1); }
+        }
+
+        /* --- Shatter Effect --- */
+        #shatter-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+        .piece {
+            position: absolute;
+            width: 25%; /* 1/4 of the box width */
+            height: 25%; /* 1/4 of the box height */
+            background-image: url('https://static.wikia.nocookie.net/99-nights-in-the-forest/images/3/35/Alien_Chest.png/revision/latest?cb=20250719131925');
+            background-size: 400% 400%; /* 4x the piece size */
+            animation: shatter 1.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        }
+
+        @keyframes shatter {
+            0% {
+                opacity: 1;
+                transform: scale(1) rotate(0deg);
+            }
+            100% {
+                opacity: 0;
+                transform: translate(var(--tx), var(--ty)) scale(0.5) rotate(var(--rot));
+            }
+        }
+
+        /* --- Items Animation --- */
+        .item {
+            position: absolute; /* Position relative to box-container */
+            opacity: 0;
+            transform: scale(0.3); /* Initial state: small and invisible at the center */
+        }
+        .item.fly-out {
+            animation: fly-out 1.2s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+        }
+        @keyframes fly-out {
+            0% {
+                opacity: 0;
+                transform: scale(0.3);
+            }
+            60% {
+                opacity: 1;
+                transform: var(--transform-end) scale(1.1);
+            }
+            80% {
+                transform: var(--transform-end) scale(0.95);
+            }
+            100% {
+                opacity: 1;
+                transform: var(--transform-end) scale(1);
+            }
+        }
+
+        @keyframes float {
+            0% { transform: translateY(0px); }
+            50% { transform: translateY(-15px); }
+            100% { transform: translateY(0px); }
+        }
+
+        .item img.floating {
+            animation: float 3s ease-in-out infinite;
+        }
+
+        /* Add variation to the floating animation for a more natural look */
+        .item:nth-child(1) img.floating {
+            animation-duration: 3.5s;
+        }
+        .item:nth-child(2) img.floating {
+            animation-duration: 4s;
+            animation-delay: -1.5s; /* Start at different points in the cycle */
+        }
+        .item:nth-child(3) img.floating {
+            animation-duration: 3.2s;
+            animation-delay: -0.5s;
+        }
+
+        /* --- New Modal Styling --- */
+        .modal-container {
+            transition: transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.4s ease-out;
+            transform: translateY(-40px);
+            opacity: 0;
+        }
+        
+        .modal-container.visible {
+             transform: translateY(0);
+             opacity: 1;
+        }
+
+    </style>
+</head>
+<body class="overflow-hidden">
+
+    <!-- Container for the particle background -->
+    <div id="particle-container" class="absolute top-0 left-0 w-full h-full -z-10"></div>
+
+    <main class="min-h-screen w-full flex flex-col items-center justify-center p-4 text-white text-center">
+        
+        <!-- The main interactive area -->
+        <div id="box-container" class="relative w-[45vmin] h-[45vmin] flex items-center justify-center">
+            
+            <!-- The clickable box -->
+            <div id="box" class="w-full h-full">
+                <img src="https://static.wikia.nocookie.net/99-nights-in-the-forest/images/3/35/Alien_Chest.png/revision/latest?cb=20250719131925"
+                     onerror="this.onerror=null;this.src='https://placehold.co/200x200/8b5cf6/FFFFFF?text=Error';"
+                     alt="Mysterious Box" 
+                     class="w-full h-full object-contain rounded-2xl drop-shadow-[0_0_25px_rgba(168,85,247,0.6)]">
+            </div>
+
+            <!-- This container will hold the shattered pieces -->
+            <div id="shatter-container"></div>
+
+            <!-- The container for revealed items, hidden initially -->
+            <!-- Item 1 -->
+            <div class="item text-center" style="--transform-end: translateX(-80%) translateY(-20%);">
+                <img src="https://static.wikia.nocookie.net/99-nights-in-the-forest/images/3/3c/Alien_Armor.png/revision/latest?cb=20250719131402"
+                     onerror="this.onerror=null;this.src='https://placehold.co/100x120/22c55e/FFFFFF?text=Error';"
+                     alt="Revealed Item 1" class="w-24 h-30 md:w-32 md:h-40 object-contain rounded-lg drop-shadow-[0_5px_15px_rgba(34,197,94,0.4)]">
+            </div>
+            <!-- Item 2 -->
+            <div class="item text-center" style="--transform-end: translateY(20%);">
+                <img src="https://static.wikia.nocookie.net/99-nights-in-the-forest/images/e/e2/Laser_Sword.png/revision/latest?cb=20250719131305" 
+                     onerror="this.onerror=null;this.src='https://placehold.co/120x150/a855f7/FFFFFF?text=Error';"
+                     alt="Revealed Item 2" class="w-28 h-36 md:w-40 md:h-52 object-contain rounded-lg drop-shadow-[0_5px_15px_rgba(168,85,247,0.4)]">
+            </div>
+            <!-- Item 3 -->
+            <div class="item text-center" style="--transform-end: translateX(80%) translateY(-20%);">
+                <img src="https://static.wikia.nocookie.net/99-nights-in-the-forest/images/a/a3/Laser_Cannon.png/revision/latest?cb=20250720155505"
+                     onerror="this.onerror=null;this.src='https://placehold.co/100x120/f97316/FFFFFF?text=Error';"
+                     alt="Revealed Item 3" class="w-24 h-30 md:w-32 md:h-40 object-contain rounded-lg drop-shadow-[0_5px_15px_rgba(249,115,22,0.4)]">
+            </div>
+        </div>
+        
+    </main>
+    
+    <!-- Username Form Modal -->
+    <div id="username-modal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 z-50 opacity-0 pointer-events-none transition-opacity duration-300">
+        <div id="username-form-container" class="modal-container bg-[#1e1c33] p-8 rounded-2xl shadow-lg w-full max-w-sm text-center">
+            <h2 class="text-2xl mb-4 text-purple-300">Claim Your Items!</h2>
+            <p class="text-gray-400 mb-6">Enter your in-game username to receive your rewards.</p>
+            <form id="username-form">
+                <input type="text" id="username-input" placeholder="Your Username" class="w-full bg-[#100f1c] border-2 border-purple-400 rounded-lg p-3 text-white focus:outline-none focus:ring-2 focus:ring-purple-300 mb-4" required>
+                <button type="submit" class="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-4 rounded-lg transition-colors duration-300">Proceed</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Success Modal -->
+    <div id="success-modal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 z-50 opacity-0 pointer-events-none transition-opacity duration-300">
+        <div id="success-message-container" class="modal-container bg-[#1e1c33] p-8 rounded-2xl shadow-lg w-full max-w-sm text-center">
+            <h2 class="text-3xl mb-4 text-green-400">Success!</h2>
+            <p class="text-gray-300 mb-6">Your items have been sent to your account. Enjoy your adventure!</p>
+            <button id="close-success-btn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded-lg transition-colors duration-300">Awesome!</button>
+        </div>
+    </div>
+
+
+    <script>
+        // --- DOM Elements ---
+        const mainContent = document.querySelector('main');
+        const box = document.getElementById('box');
+        const shatterContainer = document.getElementById('shatter-container');
+        const particleContainer = document.getElementById('particle-container');
+        
+        const usernameModal = document.getElementById('username-modal');
+        const usernameFormContainer = document.getElementById('username-form-container');
+        const usernameForm = document.getElementById('username-form');
+        const usernameInput = document.getElementById('username-input');
+
+        const successModal = document.getElementById('success-modal');
+        const successMessageContainer = document.getElementById('success-message-container');
+        const closeSuccessBtn = document.getElementById('close-success-btn');
+
+        let isAnimating = false;
+
+        // --- Particle Generation ---
+        function createParticles() {
+            const particleCount = 30;
+            for (let i = 0; i < particleCount; i++) {
+                const particle = document.createElement('div');
+                particle.classList.add('particle');
+                const size = Math.random() * 4 + 1;
+                particle.style.width = `${size}px`;
+                particle.style.height = `${size}px`;
+                particle.style.left = `${Math.random() * 100}%`;
+                particle.style.bottom = '0';
+                particle.style.animationDelay = `${Math.random() * 5}s`;
+                particle.style.animationDuration = `${Math.random() * 5 + 3}s`;
+                particleContainer.appendChild(particle);
+            }
+        }
+        
+        // --- Refactored Modal Helper Functions ---
+        function showModal(modal, container) {
+            modal.classList.remove('pointer-events-none');
+            modal.classList.remove('opacity-0');
+            // Delay adding 'visible' to ensure the transition triggers reliably
+            requestAnimationFrame(() => {
+                container.classList.add('visible');
+            });
+        }
+
+        function hideModal(modal, container) {
+            return new Promise(resolve => {
+                // Start hiding the inner container and the outer modal overlay
+                container.classList.remove('visible');
+                modal.classList.add('opacity-0');
+                modal.classList.add('pointer-events-none');
+                
+                // The longest transition is the container's transform (500ms).
+                // We resolve the promise after this duration to ensure all animations are complete.
+                setTimeout(resolve, 500);
+            });
+        }
+
+        // --- Main Animation Logic ---
+        box.addEventListener('click', () => {
+            if (isAnimating) return;
+            isAnimating = true;
+
+            box.classList.add('shake-stretch');
+
+            box.addEventListener('animationend', () => {
+                box.style.opacity = '0';
+                createShatterEffect();
+
+                setTimeout(() => {
+                    shatterContainer.innerHTML = '';
+                    const items = document.querySelectorAll('#box-container .item');
+                    const itemAnimationPromises = [];
+
+                    items.forEach((item) => {
+                        const promise = new Promise(resolve => {
+                            item.addEventListener('animationend', (e) => {
+                                if (e.animationName === 'fly-out') {
+                                    item.querySelector('img')?.classList.add('floating');
+                                    resolve();
+                                }
+                            }, { once: true });
+                        });
+                        itemAnimationPromises.push(promise);
+                        item.style.animationDelay = `${Math.random() * 0.4}s`;
+                        item.classList.add('fly-out');
+                    });
+
+                    Promise.all(itemAnimationPromises).then(() => {
+                        setTimeout(() => {
+                            mainContent.style.opacity = '0';
+                            setTimeout(() => {
+                                showModal(usernameModal, usernameFormContainer);
+                            }, 400); // Show modal slightly before fade out completes
+                        }, 1500);
+                    });
+                }, 400);
+
+            }, { once: true });
+        });
+
+        // --- Shatter Effect ---
+        function createShatterEffect() {
+            const rows = 4, cols = 4;
+            for (let i = 0; i < rows; i++) {
+                for (let j = 0; j < cols; j++) {
+                    const piece = document.createElement('div');
+                    piece.classList.add('piece');
+                    piece.style.top = `${i * 25}%`;
+                    piece.style.left = `${j * 25}%`;
+                    piece.style.backgroundPosition = `${j * (100 / (cols - 1))}% ${i * (100 / (rows - 1))}%`;
+                    const tx = (Math.random() - 0.5) * 600;
+                    const ty = (Math.random() - 0.5) * 600;
+                    const rot = (Math.random() - 0.5) * 720;
+                    piece.style.setProperty('--tx', `${tx}px`);
+                    piece.style.setProperty('--ty', `${ty}px`);
+                    piece.style.setProperty('--rot', `${rot}deg`);
+                    shatterContainer.appendChild(piece);
+                }
+            }
+        }
+
+        // --- Form Logic ---
+        usernameForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if (usernameInput.value.trim() !== '') {
+                await hideModal(usernameModal, usernameFormContainer);
+                showModal(successModal, successMessageContainer);
+            }
+        });
+        
+        closeSuccessBtn.addEventListener('click', () => {
+             hideModal(successModal, successMessageContainer);
+        });
+
+        // --- Initial Load ---
+        window.onload = createParticles;
+    </script>
+</body>
+</html>
+
